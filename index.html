@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+        <style>
+            h1{
+                text-align:center;
+            }
+            canvas {
+                background: #eee;
+                }
+            #canvas-wrapper{
+                width:480px;
+                margin:0 auto;
+            }
+        </style>
+</head>
+<script src="https://www.gstatic.com/firebasejs/8.4.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.4.1/firebase-database.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBoQf3DpFkovrjKUJjQ5YodDeumh7SizWU",
+    authDomain: "ballgame-f147e.firebaseapp.com",
+    projectId: "ballgame-f147e",
+    storageBucket: "ballgame-f147e.appspot.com",
+    messagingSenderId: "7623238061",
+    appId: "1:7623238061:web:74d3d818aaf47634cc8124",
+    databaseURL:"https://ballgame-f147e-default-rtdb.asia-southeast1.firebasedatabase.app"
+  };
+  firebase.initializeApp(firebaseConfig);
+</script>
+
+<body>
+  <h1>BallGame</h1>
+  <div id="canvas-wrapper">
+  <canvas id="myCanvas" width="540" height="640"></canvas>
+  <select id="name">
+      <option value="yuu">裕</option>
+      <option value="hiroaki">弘明</option>
+  </select>
+  <input type="number" id="speed" value="2" max="10" min="1">
+  <input type="number" id="ballnum" value="1" max="10" min="1">
+
+  <!--
+  touch-action: none; スマホでタップしたままスワイプするとpointerupイベントが発生しない現象の防止
+  user-select: none;　及び oncontextmenu="return false;" 長押し時のポップアップ停止
+  -->
+  <br>
+  <button
+          id="btnleft" 
+          style="touch-action: none; user-select: none; width:17em; height:5em;"
+          oncontextmenu="return false;">
+          <img src="左.jpg" height ="40" width="40" />
+  </button>
+  <button
+          id="btnright" 
+          style="touch-action: none; user-select: none; width:17em; height:5em;"
+          oncontextmenu="return false;">
+          <img src="右.jpg" height ="40" width="40" />
+  </button>
+  </div>
+  <script>console.log('test0');</script>
+  <!--
+  <script src="./Modules/DBControl.js" type="module"></script>
+  <script src="./Modules/Ball.js" type="module"></script>
+  <script src="./Modules/Paddle.js" type="module"></script>
+  <script src="./Modules/CollisionWall.js" type="module"></script>
+  <script src="./Modules/PaddleControl.js" type="module"></script>
+  <script src="./Modules/KeyControl.js" type="module"></script>
+  <script src="./Modules/DrawControl.js" type="module"></script>
+  <script src="./Modules/BallControl.js" type="module"></script>
+  -->
+  <script type="module" src="./main.js"></script>
+  <script>console.log('test2');</script>
+  </body>
+</html>

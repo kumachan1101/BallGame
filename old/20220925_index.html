@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+        <style>
+            h1{
+                text-align:center;
+            }
+            canvas {
+                background: #eee;
+                }
+            #canvas-wrapper{
+                width:480px;
+                margin:0 auto;
+            }
+        </style>
+</head>
+<script src="https://www.gstatic.com/firebasejs/8.4.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.4.1/firebase-database.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBoQf3DpFkovrjKUJjQ5YodDeumh7SizWU",
+    authDomain: "ballgame-f147e.firebaseapp.com",
+    projectId: "ballgame-f147e",
+    storageBucket: "ballgame-f147e.appspot.com",
+    messagingSenderId: "7623238061",
+    appId: "1:7623238061:web:74d3d818aaf47634cc8124",
+    databaseURL:"https://ballgame-f147e-default-rtdb.asia-southeast1.firebasedatabase.app"
+  };
+  firebase.initializeApp(firebaseConfig);
+</script>
+
+<body>
+    <h1>BallGame</h1>
+    <div id="canvas-wrapper">
+    <canvas id="myCanvas" width="540" height="640"></canvas>
+    <select id="name">
+        <option value="yuu">裕</option>
+        <option value="hiroaki">弘明</option>
+    </select>
+    <input type="number" name="speed" id="speed"/>
+
+    <!--
+    touch-action: none; スマホでタップしたままスワイプするとpointerupイベントが発生しない現象の防止
+    user-select: none;　及び oncontextmenu="return false;" 長押し時のポップアップ停止
+    -->
+    <br>
+    <button
+            id="btnleft" 
+            style="touch-action: none; user-select: none; width:17em; height:5em;"
+            oncontextmenu="return false;">
+      ←
+    </button>
+    <button
+            id="btnright" 
+            style="touch-action: none; user-select: none; width:17em; height:5em;"
+            oncontextmenu="return false;">
+      →
+    </button>
+    </div>
+
+    <script>
+        var canvas = document.getElementById("myCanvas");
+        var ctx = canvas.getContext("2d");
+        var ballRadius = 10;
+        var random = Math.floor( Math.random() * 350 ) + 50;
+        var paddleHeight = 10;
+        var paddleWidth = 120;
+        var paddleX1 = (canvas.width-paddleWidth)/2;
+        var paddleX2 = (canvas.width-paddleWidth)/2;
+        var x = random;
+        var y = canvas.height / 2;
+        var dx = parseInt(document.getElementById("speed").value);
+        var dy = dx;
+        var rightPressed = false;
+        var leftPressed = false;
+        var brickRowCount = 5;
+        var brickColumnCount = 3;
+        var brickWidth = 75;
+        var brickHeight = 20;
+        var brickPadding = 10;
+        var brickOffsetTop = 30;
+        var brickOffsetLeft = 30;
+        var score = 0;
+        var bricks = [];
+        const name = document.getElementById("name");
+        var database = firebase.database();
+        let room = "ballgame";
+        let DatabaseID = "NClMDI0iiwrNG0Uj3XK";
+        var player1win = 0;
+        var player2win = 0;
+
+
+        document.getElementById('btnright').addEventListener('pointerdown', () => {
+          const intervalId = setInterval(pushing_btnright, 50)
+          
+          document.addEventListener('pointerup', () => {
+              rightPressed = false;
+            clearInterval(intervalId)
+          }, { once: true })
+        })
+        const pushing_btnright = () => {
+          rightPressed = true;
+        }
+
+        document.getElementById('btnleft').addEventListener('pointerdown', () => {
+          const intervalId = setInterval(pushing_btnleft, 50)
+          
+          document.addEventListener('pointerup', () => {
+              leftPressed = false;
+            clearInterval(intervalId)
+          }, { once: true })
+        })
+        const pushing_btnleft = () => {
+          leftPressed = true;
+        }
+
+        document.addEventListener("keydown", keyDownHandler, false);
+        document.addEventListener("keyup", keyUpHandler, false);
+
+        function keyDownHandler(e) {
+            if(e.key == "Right" || e.key == "ArrowRight") {
+                rightPressed = true;
+            }
+            else if(e.key == "Left" || e.key == "ArrowLeft") {
+                leftPressed = true;
+            }
+        }
+        
+        function keyUpHandler(e) {
+            if(e.key == "Right" || e.key == "ArrowRight") {
+                rightPressed = false;
+            }
+            else if(e.key == "Left" || e.key == "ArrowLeft") {
+                leftPressed = false;
+            }
+        }
+
+        function drawBall() {
+          ctx.beginPath();
+          ctx.arc(x, y, ballRadius, 0, Math.PI*2);
+          ctx.fillStyle = "red";
+          ctx.fill();
+          ctx.closePath();
+        }
+
+        function drawPaddle() {
+          ctx.beginPath();
+          ctx.rect(paddleX1, canvas.height-paddleHeight, paddleWidth, paddleHeight);
+          ctx.rect(paddleX2, 0, paddleWidth, paddleHeight);
+          ctx.fillStyle = "blue";
+          ctx.fill();
+          ctx.closePath();
+        }
+
+
+
+        
+        function draw() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          //drawBricks();
+          drawBall();
+          drawPaddle();
+          drawScore();
+          //collisionDetection();
+
+          if(x + dx >= canvas.width-ballRadius) {
+            dx *= -1;
+            x = canvas.width-ballRadius;
+          }
+          else if(x + dx <= ballRadius) {
+            dx *= -1;
+            x = ballRadius;
+          }
+
+          if(y + dy <= ballRadius) {
+            if(x >= paddleX2 && x <= paddleX2 + paddleWidth) {
+              dy *= -1;
+              y = ballRadius;
+            }
+            else{
+              //alert("2まけ");
+              x = Math.floor( Math.random() * 350 ) + 50;
+              y = canvas.height / 2;
+              player1win++;
+              //document.location.reload();
+              //clearInterval(interval); // Needed for Chrome to end game
+            }
+          }
+          else if(y + dy >= canvas.height-ballRadius){
+            if(x >= paddleX1 && x <= paddleX1 + paddleWidth) {
+              dy *= -1;
+              y = canvas.height-ballRadius;
+            }
+            else{
+              //alert("1まけ");
+              x = Math.floor( Math.random() * 350 ) + 50;
+              y = canvas.height / 2;
+              player2win++;
+              //document.location.reload();
+              //clearInterval(interval); // Needed for Chrome to end game
+            }
+          }
+          //console.log('y値:' + y + dy);
+          /*
+          else if(y + dy > canvas.height-ballRadius) {
+            if(x > paddleX && x < paddleX + paddleWidth) {
+              dy = -dy;
+            }
+            else {
+              alert("まけ");
+              document.location.reload();
+              clearInterval(interval); // Needed for Chrome to end game
+            }
+          }
+          */
+
+          if (name.value == "yuu"){
+            if(rightPressed && paddleX1 < canvas.width-paddleWidth) {
+                paddleX1 += 7;
+            }
+            else if(leftPressed && paddleX1 > 0) {
+              paddleX1 -= 7;
+            }
+            database.ref(room).child(DatabaseID).update({
+              paddleX1: paddleX1
+            });
+          }
+          else if (name.value == "hiroaki"){
+            if(rightPressed && paddleX2 < canvas.width-paddleWidth) {
+              paddleX2 += 7;
+            }
+            else if(leftPressed && paddleX2 > 0) {
+              paddleX2 -= 7;
+            }
+            database.ref(room).child(DatabaseID).update({
+              paddleX2: paddleX2
+            });
+          }
+       
+          if (name.value == "yuu"){
+            x += dx;
+            y += dy;
+            database.ref(room).child(DatabaseID).update({
+              x: x,
+              y: y,
+              dx: dx,
+              dy: dy
+            });
+          }
+        }
+        var interval = setInterval(draw, 20);
+
+        database.ref(room).on("child_changed", function(data) {
+          const v = data.val();
+          x = parseInt(v.x);
+          y = parseInt(v.y);
+          paddleX1 = v.paddleX1;
+          paddleX2 = v.paddleX2;
+          dx = v.dx;
+          dy = v.dy;
+        });
+
+        const element = document.querySelector('#speed');
+        element.addEventListener('change', handleChange);
+ 
+        function handleChange(event) {
+          const value = parseInt(element.value);
+          database.ref(room).child(DatabaseID).update({
+            dx: value,
+            dy: value
+          });
+        }
+
+          /*
+        database.ref(room).on("value", function(data) {
+          const v = data.val();
+          x = v.x;
+          y = v.y;
+          paddleX1 = v.paddleX1;
+          paddleX2 = v.paddleX2;
+
+        });
+        for(var c=0; c<brickColumnCount; c++) {
+          bricks[c] = [];
+          for(var r=0; r<brickRowCount; r++) {
+            bricks[c][r] = { x: 0, y: 0, status: 1 };
+          }
+        }
+
+        function drawBricks() {
+          for(var c=0; c<brickColumnCount; c++) {
+            for(var r=0; r<brickRowCount; r++) {
+              if(bricks[c][r].status == 1) {
+                var brickX = (r*(brickWidth+brickPadding))+brickOffsetLeft;
+                var brickY = (c*(brickHeight+brickPadding))+brickOffsetTop;
+                bricks[c][r].x = brickX;
+                bricks[c][r].y = brickY;
+                ctx.beginPath();
+                ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                ctx.fillStyle = "black";
+                ctx.fill();
+                ctx.closePath();
+              }
+            }
+          }
+        }
+
+      function KeyDownFunc(e){
+          var key_code = e.keyCode;
+
+          if(key_code == 39) {
+            rightPressed = true;
+          }
+          else if(key_code == 37) {
+            leftPressed = true;
+          }
+      }
+      // イベントリスナーに対応している
+      if(document.addEventListener){
+          document.addEventListener("keydown" , KeyDownFunc);
+      // アタッチイベントに対応している
+      }else if(document.attachEvent){
+          document.attachEvent("onkeydown" , KeyDownFunc);
+      }    
+
+      function KeyUpFunc(e){
+        var key_code = e.keyCode;
+
+        if(key_code == 39) {
+          rightPressed = false;
+        }
+        else if(key_code == 37) {
+          leftPressed = false;
+        }
+    }
+
+      // イベントリスナーに対応している
+      if(document.addEventListener){
+        document.addEventListener("keyup" , KeyUpFunc);
+      // アタッチイベントに対応している
+      }else if(document.attachEvent){
+        document.attachEvent("onkeyup" , KeyUpFunc);
+      }
+
+          
+        function collisionDetection() {
+          for(var c=0; c<brickColumnCount; c++) {
+            for(var r=0; r<brickRowCount; r++) {
+              var b = bricks[c][r];
+              if(b.status == 1) {
+                if(x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight) {
+                  dy = -dy;
+                  b.status = 0;
+                  score++;
+                  if(score == brickRowCount*brickColumnCount) {
+                    alert("やったね！");
+                    document.location.reload();
+                    clearInterval(interval); // ゲーム再スタート
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+      */
+    </script>
+  <script>
+    function drawScore() {
+      ctx.font = "16px Arial";
+      ctx.fillStyle = "blue";
+      ctx.fillText("win: "+player1win, 8, canvas.height-10);
+      ctx.fillText("win: "+player2win, 8, 20);
+    }
+    class Score {
+      constructor(value) {
+        this.value = value;
+      }
+    
+      click() {
+        alert(this.value);
+      }
+    }
+    
+  </script>
+</body>
+</html>
